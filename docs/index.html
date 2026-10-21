@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Pack Workbench: battery design check</title>
+<title>Battery Energy System Design Platform</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
 :root{--bg:#e9edf1;--pn:#fff;--ln:#c9d1d9;--ink:#16212b;--mu:#5b6b7a;--hd:#1d3447;--hdt:#e8eef3;--ac:#2a6fa8;--ok:#1d8a52;--wn:#b7791f;--bd:#c0392b;--okb:#e3f4ea;--bdb:#fbe6e3;--wnb:#fbf0da;
@@ -48,8 +48,27 @@ svg{width:100%;height:auto;display:block}
 .note{font-size:12px;color:var(--mu);padding:8px 2px}
 .c{text-align:center}
 .pf{font-weight:600;font-size:12px}.pf.p{color:var(--ok)}.pf.f{color:var(--bd)}
+.tabs{display:flex;gap:4px;margin-bottom:12px;border-bottom:2px solid var(--ln)}
+.tab{padding:8px 16px;background:transparent;border:none;color:var(--mu);cursor:pointer;font:inherit;font-size:13px;font-weight:500;border-bottom:2px solid transparent;margin-bottom:-2px}
+.tab.active{color:var(--ac);border-bottom-color:var(--ac)}
+.tab:hover{background:color-mix(in srgb,var(--ln) 20%,var(--pn))}
+.tab-content{display:none}.tab-content.active{display:block}
+.cost-bar{display:flex;align-items:center;gap:8px;margin:6px 0}
+.cost-bar-label{flex:0 0 80px;font-size:12px;color:var(--mu)}
+.cost-bar-visual{flex:1;height:20px;background:var(--ln);border-radius:2px;overflow:hidden;position:relative}
+.cost-bar-fill{height:100%;background:var(--ac);transition:width .2s}
+.cost-bar-value{flex:0 0 60px;text-align:right;font-size:12px;font-weight:600}
+.margin-bar{height:8px;background:var(--ln);border-radius:4px;margin:4px 0;overflow:hidden}
+.margin-fill{height:100%;border-radius:4px}.margin-fill.ok{background:var(--ok)}.margin-fill.warn{background:var(--wn)}.margin-fill.bad{background:var(--bd)}
+.upload-area{border:2px dashed var(--ln);border-radius:4px;padding:20px;text-align:center;cursor:pointer;transition:all .2s}
+.upload-area:hover{border-color:var(--ac);background:color-mix(in srgb,var(--ac) 5%,var(--pn))}
+.upload-area input{display:none}
+.btn{padding:6px 12px;background:var(--ac);color:#fff;border:none;border-radius:3px;cursor:pointer;font:inherit;font-size:13px;font-weight:500}
+.btn:hover{background:color-mix(in srgb,var(--ink) 20%,var(--ac))}
+.btn-sec{background:var(--ln);color:var(--ink)}.btn-sec:hover{background:color-mix(in srgb,var(--ink) 15%,var(--ln))}
+.assumptions{font-size:12px;line-height:1.6}.assumptions dt{font-weight:600;color:var(--ink);margin-top:8px}.assumptions dd{margin:2px 0 0 16px;color:var(--mu)}
 </style></head><body>
-<header><b>Pack Workbench</b><span>E-scooter module study, rev 0.3</span><span id="hs"></span></header>
+<header><b>Battery Energy System Design Platform</b><span>Reusable hackathon prototype, rev 1.0</span><span id="hs"></span></header>
 <main>
 <aside class="pn"><h2>Requirements and pack</h2><div class="bd">
 <label>Cell type</label>
@@ -65,6 +84,14 @@ svg{width:100%;height:auto;display:block}
 <label>BMS thermistor position</label><select id="th"><option value="c">Centre cell (hot-spot)</option><option value="e">Edge cell (corner)</option></select>
 </div></aside>
 <section>
+<div class="tabs">
+<button class="tab active" data-tab="overview">Overview</button>
+<button class="tab" data-tab="validation">Validation</button>
+<button class="tab" data-tab="electrical">Electrical & Protection</button>
+<button class="tab" data-tab="analysis">Analysis</button>
+<button class="tab" data-tab="assumptions">Assumptions</button>
+</div>
+<div id="tab-overview" class="tab-content active">
 <div class="grid3" id="designs"></div>
 <div class="pn" style="margin-bottom:12px"><h2 style="display:flex;justify-content:space-between;align-items:center">Pack view: cell temperature map<select id="pv" style="width:auto"><option value="0">Baseline</option><option value="1">Option A</option><option value="2">Option B</option></select></h2><div class="bd"><svg id="pk" viewBox="0 0 600 260" role="img" aria-label="Battery pack cell map coloured by temperature"></svg><div class="note" id="pkn"></div></div></div>
 <div class="row2">
@@ -74,16 +101,102 @@ svg{width:100%;height:auto;display:block}
 <div class="pn wide" style="margin-top:12px"><h2>Requirement traceability</h2><table id="trace"></table></div>
 <div class="rec" id="rec"></div>
 <p class="note">Assumptions: typical datasheet values (verify against the real cell sheet), ohmic heating only (I²R, with 2 mΩ per series link), lumped first-order thermal model with 1000 J/kg·K, charge time = 0.8/C h constant-current + 0.3 h taper. Screening tool for comparing options, not a safety certification.</p>
+</div>
+
+<div id="tab-validation" class="tab-content">
+<div class="pn"><h2>Import measured data</h2><div class="bd">
+<div class="upload-area" id="uploadArea">
+<input type="file" id="csvFile" accept=".csv">
+<p>Click or drag CSV file here</p>
+<p class="note" style="margin-top:4px">Format: time(s), temperature(°C)</p>
+</div>
+<div id="validationChart" style="margin-top:16px"></div>
+<div id="validationResults"></div>
+</div></div>
+</div>
+
+<div id="tab-electrical" class="tab-content">
+<div class="grid3" id="electricalPanels"></div>
+<div class="pn" style="margin-top:12px"><h2>BMS Protection limits</h2><table id="bmsTable"></table></div>
+</div>
+
+<div id="tab-analysis" class="tab-content">
+<div class="row2">
+<div class="pn"><h2>Cost breakdown</h2><div class="bd" id="costBreakdown"></div></div>
+<div class="pn"><h2>Safety margins</h2><div class="bd" id="safetyMargins"></div></div>
+</div>
+<div class="pn" style="margin-top:12px"><h2>Sensitivity analysis</h2><div class="bd"><svg id="sensitivity" viewBox="0 0 600 300"></svg></div></div>
+<div class="pn" style="margin-top:12px"><h2>Cell variation & ageing</h2><div class="bd">
+<label><input type="checkbox" id="enableVariation"> Enable resistance variation (±10%)</label>
+<label><input type="checkbox" id="enableAgeing"> Simulate end-of-life (2x resistance)</label>
+<div id="variationResults" style="margin-top:12px"></div>
+</div></div>
+</div>
+
+<div id="tab-assumptions" class="tab-content">
+<div class="pn"><h2>Assumptions & data sources</h2><div class="bd">
+<dl class="assumptions" id="assumptionsList"></dl>
+</div></div>
+<div class="pn" style="margin-top:12px"><h2>Safety precautions & limitations</h2><div class="bd">
+<ul class="note" id="limitationsList" style="line-height:1.8"></ul>
+</div></div>
+<div style="margin-top:12px;display:flex;gap:8px">
+<button class="btn" id="exportPDF">Export report (PDF)</button>
+<button class="btn btn-sec" id="exportJSON">Export data (JSON)</button>
+</div>
+</div>
+
 </section></main>
 <script>
-const CELL={a:{n:"18650 NMC",ah:2.5,v:3.6,r:.035,mc:1,m:47,c:180},b:{n:"21700 NMC",ah:4,v:3.6,r:.020,mc:.75,m:69,c:260},c:{n:"26650 LFP",ah:3,v:3.2,r:.030,mc:1,m:85,c:300}};
+const CELL={a:{n:"18650 NMC",ah:2.5,v:3.6,r:.035,mc:1,m:47,c:180,ovp:4.2,uvp:2.5,ocp:5},b:{n:"21700 NMC",ah:4,v:3.6,r:.020,mc:.75,m:69,c:260,ovp:4.2,uvp:2.5,ocp:8},c:{n:"26650 LFP",ah:3,v:3.2,r:.030,mc:1,m:85,c:300,ovp:3.65,uvp:2.0,ocp:6}};
 const COOL={none:{n:"Passive enclosure",rth:9,m:0,c:0},spr:{n:"Aluminium spreader",rth:5.5,m:60,c:150},fan:{n:"Forced air",rth:3,m:180,c:400}};
 const D=[{id:"Baseline",cool:"none",dr:false},{id:"Option A",cool:"spr",dr:false},{id:"Option B",cool:"spr",dr:true}];
 const $=i=>document.getElementById(i);
 const colors=["var(--mu)","var(--wn)","var(--ac)"];
+let measuredData=null,variationEnabled=false,ageingEnabled=false;
+function P(){return{cell:CELL[$("cell").value],S:+$("S").value,P:+$("P").value,C:+$("C").value,A:+$("A").value,T:+$("T").value,E:+$("E").value,H:+$("H").value,K:+$("K").value,th:$("th").value}}
+
+// Electrical calculations
+function electrical(d,p,r){
+const Icell=r.I/p.P,Rcell=p.cell.r*(ageingEnabled?2:1),Icellpk=Icell*1.1;
+const Ilink=r.I,Rlink=0.002,Qcell=Icell*Icell*Rcell,Qlink=Ilink*Ilink*Rlink;
+const fuseRating=Math.ceil(Icellpk*1.5),busbarA=Math.ceil(r.I/3);
+const Vcell=p.cell.v,Vpack=p.S*Vcell,cellOCP=p.cell.ocp*p.cell.ah;
+const margin={fuse:(fuseRating-Icellpk)/fuseRating*100,ocp:(cellOCP-Icell)/cellOCP*100};
+return{Icell,Rcell,Qcell,Qlink,fuseRating,busbarA,Vpack,cellOCP,margin}}
+
+// Cost breakdown
+function costBreakdown(d,p,r){
+const cells=p.S*p.P*p.cell.c,cooling=COOL[d.cool].c,bms=d.dr?650:400,enclosure=150;
+const total=cells+cooling+bms+enclosure;
+return{cells,cooling,bms,enclosure,total,perWh:total/r.Eu}}
+
+// Safety margins
+function safetyMargins(d,p,r){
+const tempMargin=(p.T-r.Te)/p.T*100;
+const timeMargin=(p.H-r.th)/p.H*100;
+const costMargin=(p.K-r.cost)/p.K*100;
+const energyMargin=(r.Eu-p.E)/p.E*100;
+return{tempMargin,timeMargin,costMargin,energyMargin}}
+
+// Cell variation simulation
+function simVariation(d,p){
+if(!variationEnabled&&!ageingEnabled)return null;
+const results=[];
+for(let i=0;i<20;i++){
+const rVar=p.cell.r*(1+(Math.random()-.5)*0.2)*(ageingEnabled?2:1);
+const cellMod={...p.cell,r:rVar};
+const pMod={...p,cell:cellMod};
+const res=sim(d,pMod);
+results.push(res.r.Te)}
+return{min:Math.min(...results),max:Math.max(...results),avg:results.reduce((a,b)=>a+b)/results.length}}
+
 function P(){return{cell:CELL[$("cell").value],S:+$("S").value,P:+$("P").value,C:+$("C").value,A:+$("A").value,T:+$("T").value,E:+$("E").value,H:+$("H").value,K:+$("K").value,th:$("th").value}}
 function sim(d,p){const nc=p.S*p.P,Ah=p.cell.ah*p.P,Vn=p.cell.v*p.S,Eu=Vn*Ah*.9,R=p.cell.r*p.S/p.P+(p.S+1)*.002;
 const co=COOL[d.cool],mass=(nc*p.cell.m+co.m+150)/1000,cost=nc*p.cell.c+co.c+(d.dr?650:400);
+// Pack dimensions (mm) - rough estimates
+const cellDia={a:18,b:21,c:26}[$("cell").value],cellLen={a:65,b:70,c:65}[$("cell").value];
+const packL=cellLen+20,packW=p.P*cellDia*1.3,packH=p.S*cellDia*1.3,volume=packL*packW*packH/1e6;
 const run=C=>{const I=C*Ah,Q=I*I*R,dT=Q*co.rth,tau=mass*1000*co.rth,th=.8/C+.3;return{I,Q,dT,tau,th,Te:p.A+dT*(1-Math.exp(-th*3600/tau))}};
 let C=p.C,r=run(C),derated=false;
 const sp={none:.35,spr:.25,fan:.15}[d.cool],g=geo(p.S,p.P),sc=sens(p.th,p.S,p.P),fs=1-sp*g(sc[0],sc[1]),se=q=>p.A+(q.Te-p.A)*fs;if(d.dr)while(se(r)>p.T&&C>.1){C*=.97;r=run(C);derated=true}
@@ -91,11 +204,15 @@ const fl=[];
 if(r.Te>p.T)fl.push(["E","Thermal / protection","Cell reaches "+r.Te.toFixed(1)+" °C, limit is "+p.T+" °C"]);
 if(C>p.cell.mc+1e-9)fl.push(["W","Cell / charger","Charge rate "+C.toFixed(2)+"C exceeds the "+p.cell.mc+"C rating of the cell"]);
 if(derated)fl.push(["I","BMS / charger","BMS cut charge rate "+p.C.toFixed(2)+"C to "+C.toFixed(2)+"C to hold the limit"]);
-if(d.dr&&r.Te>p.T&&se(r)<=p.T)fl.push(["E","BMS / sensor","Thermistor reads "+se(r).toFixed(1)+" °C while the hot-spot is "+r.Te.toFixed(1)+" °C, so derating never triggers"]);if(r.th>p.H)fl.push(["E","Electrical / user","Charge takes "+r.th.toFixed(2)+" h, requirement is "+p.H+" h"]);
+if(d.dr&&r.Te>p.T&&se(r)<=p.T)fl.push(["E","BMS / sensor","Thermistor reads "+se(r).toFixed(1)+" °C while the hot-spot is "+r.Te.toFixed(1)+" °C, so derating never triggers"]);
+if(r.th>p.H)fl.push(["E","Electrical / user","Charge takes "+r.th.toFixed(2)+" h, requirement is "+p.H+" h"]);
 if(cost>p.K)fl.push(["E","Cost","Pack costs ₹"+Math.round(cost)+", budget is ₹"+p.K]);
 if(Eu<p.E)fl.push(["E","Electrical","Usable energy "+Eu.toFixed(0)+" Wh, requirement is "+p.E+" Wh"]);
+// Interface conflict detection
+if(C>p.cell.mc&&r.Te>p.T)fl.push(["E","Interface conflict","Both C-rate AND thermal limit violated - impossible to fix by adjusting single parameter"]);
+if(!d.dr&&r.Te>p.T&&d.cool=="none")fl.push(["W","Design / thermal","Enable BMS derating OR add cooling to meet temperature limit"]);
 const chk={en:Eu>=p.E,te:r.Te<=p.T,th:r.th<=p.H,co:cost<=p.K,cr:C<=p.cell.mc+1e-9};
-return{sp,fs,se,Vn,Ah,Eu,R,mass,cost,C,r,fl,chk,ok:Object.values(chk).every(Boolean),Ep:Eu/mass/1000*1000}}
+return{sp,fs,se,Vn,Ah,Eu,R,mass,cost,C,r,fl,chk,ok:Object.values(chk).every(Boolean),Ep:Eu/mass/1000*1000,volume,packL,packW,packH}}
 function build(){$("designs").innerHTML=D.map((d,i)=>`<div class="pn dc"><h3><span id="n${i}">${d.id}</span><span class="tag" id="t${i}"></span></h3>
 <div class="cfg"><div><label>Cooling</label><select data-i="${i}" data-k="cool">${Object.entries(COOL).map(([k,v])=>`<option value="${k}"${k==d.cool?" selected":""}>${v.n}</option>`).join("")}</select></div>
 <div class="tg"><input type="checkbox" id="dr${i}" data-i="${i}" data-k="dr"${d.dr?" checked":""}><label for="dr${i}" style="margin:0;color:var(--ink)">BMS thermal derating</label></div></div>
@@ -107,7 +224,7 @@ $("vS").textContent=p.S+"S";$("vP").textContent=p.P+"P ("+p.S*p.P+" cells)";
 const R=D.map(d=>sim(d,p));
 R.forEach((x,i)=>{$("t"+i).textContent=x.ok?"Meets all":"Fails "+x.fl.filter(f=>f[0]=="E").length;$("t"+i).className="tag "+(x.ok?"p":"f");
 $("n"+i).textContent=D[i].id;
-$("k"+i).innerHTML=[["Pack","<b>"+x.Vn.toFixed(1)+" V</b> / "+x.Ah.toFixed(1)+" Ah"],["Usable energy",x.Eu.toFixed(0)+" Wh"],["Charge rate used",x.C.toFixed(2)+"C ("+(x.C*x.Ah).toFixed(1)+" A)"],["Heat at charge",x.r.Q.toFixed(1)+" W"],["Peak cell temp",`<span class="${x.chk.te?"":"hot"}">${x.r.Te.toFixed(1)} °C</span>`],["Charge time",`<span class="${x.chk.th?"":"hot"}">${x.r.th.toFixed(2)} h</span>`],["Mass",x.mass.toFixed(2)+" kg"],["Energy per kg",(x.Eu/x.mass).toFixed(0)+" Wh/kg"],["Cost",`<span class="${x.chk.co?"":"hot"}">₹${Math.round(x.cost).toLocaleString("en-IN")}</span>`]].map(r=>`<tr><td class="l">${r[0]}</td><td class="n">${r[1]}</td></tr>`).join("")});
+$("k"+i).innerHTML=[["Pack","<b>"+x.Vn.toFixed(1)+" V</b> / "+x.Ah.toFixed(1)+" Ah"],["Usable energy",x.Eu.toFixed(0)+" Wh"],["Charge rate used",x.C.toFixed(2)+"C ("+(x.C*x.Ah).toFixed(1)+" A)"],["Heat at charge",x.r.Q.toFixed(1)+" W"],["Peak cell temp",`<span class="${x.chk.te?"":"hot"}">${x.r.Te.toFixed(1)} °C</span>`],["Charge time",`<span class="${x.chk.th?"":"hot"}">${x.r.th.toFixed(2)} h</span>`],["Mass",x.mass.toFixed(2)+" kg"],["Volume",x.volume.toFixed(1)+" L"],["Energy density",(x.Eu/x.volume).toFixed(0)+" Wh/L"],["Cost",`<span class="${x.chk.co?"":"hot"}">₹${Math.round(x.cost).toLocaleString("en-IN")}</span>`]].map(r=>`<tr><td class="l">${r[0]}</td><td class="n">${r[1]}</td></tr>`).join("")});
 // chart
 const W=600,H=230,L=38,B=26,tm=Math.max(...R.map(x=>x.r.th))*1.05,y0=p.A-3,y1=Math.max(p.T+8,...R.map(x=>x.r.Te+3));
 const X=t=>L+(W-L-8)*t/tm,Y=v=>H-B-(H-B-10)*(v-y0)/(y1-y0);
@@ -126,7 +243,114 @@ const rq=[["R1","Usable energy ≥ "+p.E+" Wh","Electrical model","en"],["R2","C
 $("trace").innerHTML=`<tr><th>ID</th><th>Requirement</th><th>Evidence source</th>${D.map(d=>`<th class="c">${d.id}</th>`).join("")}</tr>`+rq.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td class="l">${r[2]}</td>${R.map(x=>`<td class="c"><span class="pf ${x.chk[r[3]]?"p":"f"}">${x.chk[r[3]]?"Pass":"Fail"}</span></td>`).join("")}</tr>`).join("");
 const ok=R.map((x,i)=>[x,i]).filter(a=>a[0].ok).sort((a,b)=>a[0].cost-b[0].cost);
 $("rec").innerHTML=ok.length?`<b>Recommended: ${D[ok[0][1]].id}.</b> It meets all five requirements at the lowest cost (₹${Math.round(ok[0][0].cost).toLocaleString("en-IN")}), charging at ${ok[0][0].C.toFixed(2)}C in ${ok[0][0].r.th.toFixed(2)} h with a peak of ${ok[0][0].r.Te.toFixed(1)} °C. Next step: validate with a low-voltage 4S2P thermistor test.`:`<b>No design meets every requirement.</b> Open the log: change cooling, lower the charge rate, add parallel cells, or relax a requirement.`;
-const bad=R.some(x=>x.fl.some(f=>f[0]=="E"));$("hs").innerHTML=`<span class="led ${bad?"x":""}"></span>${all.filter(a=>a[0][0]=="E").length} errors, ${all.filter(a=>a[0][0]=="W").length} warnings`}
+const bad=R.some(x=>x.fl.some(f=>f[0]=="E"));$("hs").innerHTML=`<span class="led ${bad?"x":""}"></span>${all.filter(a=>a[0][0]=="E").length} errors, ${all.filter(a=>a[0][0]=="W").length} warnings`;
+
+// Electrical panels
+drawElectrical(R,p);
+// Cost breakdown
+drawCostBreakdown(R,p);
+// Safety margins
+drawSafetyMargins(R,p);
+// Assumptions
+drawAssumptions();
+// Limitations
+drawLimitations();
+// Sensitivity
+drawSensitivity(p);
+// Cell variation
+if(variationEnabled||ageingEnabled)drawVariation(R,p);
+}
+
+function drawElectrical(R,p){
+$("electricalPanels").innerHTML=R.map((x,i)=>{
+const e=electrical(D[i],p,x.r);
+return`<div class="pn"><h3>${D[i].id}</h3><table>
+<tr><td class="l">Cell current</td><td class="n">${e.Icell.toFixed(2)} A</td></tr>
+<tr><td class="l">Cell I²R heat</td><td class="n">${e.Qcell.toFixed(2)} W</td></tr>
+<tr><td class="l">Link I²R heat</td><td class="n">${e.Qlink.toFixed(2)} W</td></tr>
+<tr><td class="l">Fuse rating</td><td class="n">${e.fuseRating} A</td></tr>
+<tr><td class="l">Busbar req.</td><td class="n">${e.busbarA} mm²</td></tr>
+<tr><td class="l">Pack voltage</td><td class="n">${e.Vpack.toFixed(1)} V</td></tr>
+</table></div>`}).join("");
+const bms=R.map((x,i)=>{
+const e=electrical(D[i],p,x.r);
+return{id:D[i].id,ovp:(p.S*p.cell.ovp).toFixed(1),uvp:(p.S*p.cell.uvp).toFixed(1),ocp:e.cellOCP.toFixed(1),otp:p.T}});
+$("bmsTable").innerHTML=`<tr><th>Design</th><th>OVP (V)</th><th>UVP (V)</th><th>OCP (A)</th><th>OTP (°C)</th></tr>`+
+bms.map(b=>`<tr><td>${b.id}</td><td class="n">${b.ovp}</td><td class="n">${b.uvp}</td><td class="n">${b.ocp}</td><td class="n">${b.otp}</td></tr>`).join("")}
+
+function drawCostBreakdown(R,p){
+$("costBreakdown").innerHTML=R.map((x,i)=>{
+const cb=costBreakdown(D[i],p,x);
+const max=Math.max(...R.map(r=>costBreakdown(D[r.id==D[0].id?0:r.id==D[1].id?1:2],p,r).total));
+return`<div style="margin-bottom:16px"><b>${D[i].id}</b> (₹${cb.total.toLocaleString("en-IN")}, ₹${cb.perWh.toFixed(1)}/Wh)
+<div class="cost-bar"><span class="cost-bar-label">Cells</span><div class="cost-bar-visual"><div class="cost-bar-fill" style="width:${cb.cells/max*100}%"></div></div><span class="cost-bar-value">₹${cb.cells}</span></div>
+<div class="cost-bar"><span class="cost-bar-label">Cooling</span><div class="cost-bar-visual"><div class="cost-bar-fill" style="width:${cb.cooling/max*100}%"></div></div><span class="cost-bar-value">₹${cb.cooling}</span></div>
+<div class="cost-bar"><span class="cost-bar-label">BMS</span><div class="cost-bar-visual"><div class="cost-bar-fill" style="width:${cb.bms/max*100}%"></div></div><span class="cost-bar-value">₹${cb.bms}</span></div>
+<div class="cost-bar"><span class="cost-bar-label">Enclosure</span><div class="cost-bar-visual"><div class="cost-bar-fill" style="width:${cb.enclosure/max*100}%"></div></div><span class="cost-bar-value">₹${cb.enclosure}</span></div>
+</div>`}).join("")}
+
+function drawSafetyMargins(R,p){
+$("safetyMargins").innerHTML=R.map((x,i)=>{
+const sm=safetyMargins(D[i],p,x.r);
+const getClass=m=>m>20?"ok":m>10?"warn":"bad";
+return`<div style="margin-bottom:16px"><b>${D[i].id}</b>
+<div style="margin:8px 0"><span style="font-size:12px">Temperature: ${sm.tempMargin.toFixed(1)}%</span><div class="margin-bar"><div class="margin-fill ${getClass(sm.tempMargin)}" style="width:${Math.min(100,sm.tempMargin)}%"></div></div></div>
+<div style="margin:8px 0"><span style="font-size:12px">Charge time: ${sm.timeMargin.toFixed(1)}%</span><div class="margin-bar"><div class="margin-fill ${getClass(sm.timeMargin)}" style="width:${Math.min(100,sm.timeMargin)}%"></div></div></div>
+<div style="margin:8px 0"><span style="font-size:12px">Cost: ${sm.costMargin.toFixed(1)}%</span><div class="margin-bar"><div class="margin-fill ${getClass(sm.costMargin)}" style="width:${Math.min(100,sm.costMargin)}%"></div></div></div>
+<div style="margin:8px 0"><span style="font-size:12px">Energy: ${sm.energyMargin.toFixed(1)}%</span><div class="margin-bar"><div class="margin-fill ${getClass(sm.energyMargin)}" style="width:${Math.min(100,sm.energyMargin)}%"></div></div></div>
+</div>`}).join("")}
+
+function drawAssumptions(){
+const assumptions=[
+["Cell datasheet values","Capacity, voltage, resistance, max charge rate from typical datasheets"],
+["Ohmic heating only","Heat generation: Q = I²R (neglects entropic and polarization heat)"],
+["Series link resistance","2 mΩ per busbar/weld connection"],
+["Lumped thermal model","First-order: dT/dt = (Q - (T-Ta)/Rth) / (m·Cp), Cp = 1000 J/kg·K"],
+["Charge profile","0.8/C hours CC + 0.3 hours CV taper"],
+["Usable energy","90% of nominal (depth of discharge 10-100%)"],
+["Enclosure mass","150g baseline packaging"],
+["Cooling effectiveness","Spatial temperature spread: 35% passive, 25% spreader, 15% fan"],
+["BMS derating","Iterative reduction of C-rate by 3% until thermistor reading ≤ limit"]];
+$("assumptionsList").innerHTML=assumptions.map(([t,d])=>`<dt>${t}</dt><dd>${d}</dd>`).join("")}
+
+function drawLimitations(){
+const limitations=[
+"This is a screening tool for comparing design options, not a safety certification.",
+"Thermal model is lumped (single temperature per cell); use CFD for detailed hot-spot analysis.",
+"Does not model: entropic heating, cell-to-cell variation, contact resistance drift, vibration, short-circuit transients.",
+"BMS limits (OVP/UVP/OCP/OTP) are typical values; verify against actual BMS datasheet.",
+"Cost estimates are approximate (₹, 2024 India prices for moderate volume).",
+"Always validate with physical prototype testing before production.",
+"Mechanical design (housing, mounting, sealing) is not covered.",
+"Does not include wire sizing, connector ratings, or pack-level fusing."];
+$("limitationsList").innerHTML=limitations.map(l=>`<li>${l}</li>`).join("")}
+
+function drawSensitivity(p){
+const W=600,H=300,L=50,B=40;
+let s=`<line x1="${L}" y1="${H-B}" x2="${W-10}" y2="${H-B}" stroke="var(--ln)"/><line x1="${L}" y1="10" x2="${L}" y2="${H-B}" stroke="var(--ln)"/>`;
+s+=`<text x="${W/2}" y="${H-10}" text-anchor="middle" font-size="12" fill="var(--mu)">Ambient temperature (°C)</text>`;
+s+=`<text x="15" y="${H/2}" text-anchor="middle" font-size="12" fill="var(--mu)" transform="rotate(-90 15 ${H/2})">Peak cell temp (°C)</text>`;
+const ambRange=[15,20,25,30,35,40,45,50];
+D.forEach((d,di)=>{
+const temps=ambRange.map(a=>{
+const pm={...p,A:a};
+const r=sim(d,pm);
+return r.r.Te});
+const X=a=>L+(W-L-10)*(a-15)/(50-15);
+const Y=t=>H-B-(H-B-10)*(t-Math.min(...temps)-5)/(Math.max(...temps)+5-Math.min(...temps)+5);
+let pts=ambRange.map((a,i)=>`${X(a)},${Y(temps[i])}`).join(" ");
+s+=`<polyline points="${pts}" fill="none" stroke="${colors[di]}" stroke-width="2"/>`;
+ambRange.forEach((a,i)=>s+=`<circle cx="${X(a)}" cy="${Y(temps[i])}" r="3" fill="${colors[di]}"/>`);
+s+=`<text x="${X(ambRange[ambRange.length-1])+8}" y="${Y(temps[temps.length-1])+4}" font-size="11" fill="${colors[di]}">${d.id}</text>`});
+ambRange.forEach(a=>s+=`<text x="${L+(W-L-10)*(a-15)/35}" y="${H-B+15}" text-anchor="middle" font-size="10" fill="var(--mu)">${a}</text>`);
+$("sensitivity").innerHTML=s}
+
+function drawVariation(R,p){
+$("variationResults").innerHTML=R.map((x,i)=>{
+const v=simVariation(D[i],p);
+if(!v)return"";
+return`<div style="margin:8px 0"><b>${D[i].id}:</b> ${v.min.toFixed(1)}–${v.max.toFixed(1)} °C (avg ${v.avg.toFixed(1)} °C) <span class="${v.max>p.T?"hot":""}">${v.max>p.T?"⚠ Exceeds limit":""}</span></div>`}).join("")}
+
 function geo(S,Pn){const f=(c,r)=>{const a=(c-(S-1)/2)/Math.max(1,(S-1)/2),b=(r-(Pn-1)/2)/Math.max(1,(Pn-1)/2);return Math.sqrt((a*a+b*b)/2)};let m=9;for(let c=0;c<S;c++)for(let r=0;r<Pn;r++)m=Math.min(m,f(c,r));return(c,r)=>f(c,r)-m}
 function sens(t,S,Pn){return t=="c"?[Math.round((S-1)/2),Math.round((Pn-1)/2)]:[0,0]}
 function drawPack(R,p){const x=R[+$("pv").value],S=p.S,Pn=p.P,g=geo(S,Pn),sc=sens(p.th,S,Pn),pt=Math.min(44,520/S,200/Pn),rd=pt*.43,ox=(600-pt*S)/2,oy=30,hh=oy+pt*Pn+62,top=p.T+5;
@@ -137,11 +361,99 @@ for(let c=0;c<S;c++)for(let r=0;r<Pn;r++){const T=p.A+(x.r.Te-p.A)*(1-x.sp*g(c,r
 s+=`<circle cx="${cx}" cy="${cy}" r="${rd}" fill="hsl(${hue(T)},65%,62%)" stroke="${h?"var(--bd)":"var(--ln)"}" stroke-width="${h?3:1}"><title>S${c+1} P${r+1}: ${T.toFixed(1)} °C</title></circle>`;if(pt>=28)s+=`<text x="${cx}" y="${cy+4}" text-anchor="middle" font-size="11" font-weight="600" fill="#0b1116">${Math.round(T)}</text>`;
 if(c==sc[0]&&r==sc[1])s+=`<circle cx="${cx}" cy="${cy}" r="${rd+4}" fill="none" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="3 3"/>`}
 const ly=oy+pt*Pn+32;for(let k=0;k<12;k++)s+=`<rect x="${ox+k*14}" y="${ly}" width="14" height="8" fill="hsl(${hue(p.A+(top-p.A)*k/11)},65%,62%)"/>`;
-s+=`<text x="${ox}" y="${ly+22}" font-size="11" fill="var(--mu)">${p.A} °C</text><text x="${ox+168}" y="${ly+22}" text-anchor="end" font-size="11" fill="var(--mu)">${top} °C</text><text x="${ox+182}" y="${ly+8}" font-size="11" fill="var(--mu)">Dashed ring: BMS thermistor. Red ring: above limit.</text>`;
+s+=`<text x="${ox}" y="${ly+22}" font-size="11" fill="var(--mu)">${p.A} °C</text><text x="${ox+168}" y="${ly+22}" text-anchor="end" font-size="11" fill="var(--mu)">${top} °C</text>`;
+const noteText="Dashed ring: BMS thermistor. Red ring: above limit.";
+s+=`<text x="${ox}" y="${ly+38}" font-size="10" fill="var(--mu)">${noteText}</text>`;
 $("pk").setAttribute("viewBox",`0 0 600 ${hh+12}`);$("pk").innerHTML=s;
 const sv=x.se(x.r);$("pkn").innerHTML=`<b>${hot} of ${S*Pn}</b> cells above ${p.T} °C. Hot-spot ${x.r.Te.toFixed(1)} °C, thermistor reads ${sv.toFixed(1)} °C${x.sp?`, centre to edge gap ${(x.r.Te-p.A)*x.sp>0?((x.r.Te-p.A)*x.sp).toFixed(1):0} °C`:""}. Columns are series groups, rows are parallel cells.`}
 $("pv").oninput=draw;
 document.querySelectorAll("aside input,aside select").forEach(e=>e.oninput=draw);
+
+// Tab switching
+document.querySelectorAll(".tab").forEach(tab=>{
+tab.onclick=()=>{
+document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+document.querySelectorAll(".tab-content").forEach(tc=>tc.classList.remove("active"));
+tab.classList.add("active");
+$("tab-"+tab.dataset.tab).classList.add("active")}});
+
+// CSV upload
+const uploadArea=$("uploadArea");
+uploadArea.onclick=()=>$("csvFile").click();
+uploadArea.ondragover=e=>{e.preventDefault();uploadArea.style.borderColor="var(--ac)"};
+uploadArea.ondragleave=()=>uploadArea.style.borderColor="var(--ln)";
+uploadArea.ondrop=e=>{e.preventDefault();uploadArea.style.borderColor="var(--ln)";
+if(e.dataTransfer.files.length)handleCSV(e.dataTransfer.files[0])};
+$("csvFile").onchange=e=>{if(e.target.files.length)handleCSV(e.target.files[0])};
+
+function handleCSV(file){
+const reader=new FileReader();
+reader.onload=e=>{
+const lines=e.target.result.split("\n").filter(l=>l.trim());
+measuredData=lines.slice(1).map(l=>{
+const [t,temp]=l.split(",").map(Number);
+return{t,temp}}).filter(d=>!isNaN(d.t)&&!isNaN(d.temp));
+if(measuredData.length>0){
+drawValidation();
+$("uploadArea").innerHTML=`<p style="color:var(--ok)">✓ Loaded ${measuredData.length} data points</p><p class="note">Click to upload different file</p>`}
+else alert("Invalid CSV format")};
+reader.readAsText(file)}
+
+function drawValidation(){
+const p=P(),d=D[+$("pv").value],x=sim(d,p);
+const W=600,H=250,L=50,B=40;
+let s=`<svg viewBox="0 0 ${W} ${H}">`;
+s+=`<line x1="${L}" y1="${H-B}" x2="${W-10}" y2="${H-B}" stroke="var(--ln)"/><line x1="${L}" y1="10" x2="${L}" y2="${H-B}" stroke="var(--ln)"/>`;
+const tmax=Math.max(x.r.th*3600,...measuredData.map(d=>d.t));
+const tempmax=Math.max(x.r.Te,...measuredData.map(d=>d.temp))+5;
+const X=t=>L+(W-L-10)*t/tmax;
+const Y=temp=>H-B-(H-B-10)*(temp-p.A)/(tempmax-p.A);
+// Simulated
+let pts="";
+for(let k=0;k<=50;k++){
+const t=x.r.th*k/50*3600;
+const T=p.A+x.r.dT*(1-Math.exp(-t/(x.r.tau)));
+pts+=`${X(t)},${Y(T)} `}
+s+=`<polyline points="${pts}" fill="none" stroke="var(--ac)" stroke-width="2" stroke-dasharray="4 2"/>`;
+// Measured
+measuredData.forEach(d=>s+=`<circle cx="${X(d.t)}" cy="${Y(d.temp)}" r="2.5" fill="var(--bd)"/>`);
+s+=`<text x="${W-10}" y="20" text-anchor="end" font-size="11" fill="var(--ac)">— Simulated</text>`;
+s+=`<text x="${W-10}" y="35" text-anchor="end" font-size="11" fill="var(--bd)">● Measured</text>`;
+s+=`</svg>`;
+$("validationChart").innerHTML=s;
+// Error calculation
+const errors=measuredData.map(m=>{
+const t=m.t/3600;
+const simT=p.A+x.r.dT*(1-Math.exp(-m.t/(x.r.tau)));
+return Math.abs(m.temp-simT)});
+const avgError=errors.reduce((a,b)=>a+b)/errors.length;
+const maxError=Math.max(...errors);
+$("validationResults").innerHTML=`<div class="pn" style="margin-top:12px"><div class="bd">
+<p><b>Model validation:</b> Average error ${avgError.toFixed(2)} °C, Max error ${maxError.toFixed(2)} °C</p>
+<p class="note">Root cause if error > 3 °C: check cell thermal mass, verify Rth, review contact resistance</p>
+</div></div>`}
+
+// Cell variation toggles
+$("enableVariation").onchange=()=>{variationEnabled=$("enableVariation").checked;draw()};
+$("enableAgeing").onchange=()=>{ageingEnabled=$("enableAgeing").checked;draw()};
+
+// Export functions
+$("exportJSON").onclick=()=>{
+const p=P(),R=D.map(d=>sim(d,p));
+const data={
+timestamp:new Date().toISOString(),
+requirements:p,
+designs:D.map((d,i)=>({...d,results:R[i]})),
+assumptions:$("assumptionsList").innerText,
+limitations:$("limitationsList").innerText};
+const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+const url=URL.createObjectURL(blob);
+const a=document.createElement("a");
+a.href=url;a.download=`battery-pack-design-${Date.now()}.json`;a.click()};
+
+$("exportPDF").onclick=()=>{
+alert("PDF export requires a library like jsPDF. For now, use Print to PDF from your browser (Ctrl+P).\n\nRecommended: Switch to Overview tab first, then Print.")};
+
 build();draw();
 </script></body></html>
 <!-- GitHub Pages deployment trigger: 2026-10-19 -->
