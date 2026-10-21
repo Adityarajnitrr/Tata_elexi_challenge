@@ -1,0 +1,213 @@
+{
+  "date_trained": "2026-10-21 12:56:23",
+  "n_samples": 55000,
+  "features": {
+    "numeric": [
+      "series_cells",
+      "parallel_strings",
+      "charge_rate_c",
+      "ambient_temp_c",
+      "max_cell_temp_c",
+      "min_usable_energy_wh",
+      "max_charge_time_h",
+      "max_pack_cost_inr",
+      "bms_thermal_derating"
+    ],
+    "categorical": [
+      "cell_type",
+      "bms_thermistor_position",
+      "cooling_type"
+    ]
+  },
+  "regression_targets": [
+    "peak_cell_temp_c",
+    "charge_time_h",
+    "heat_at_charge_w",
+    "effective_charge_rate_c",
+    "usable_energy_wh",
+    "pack_cost_inr",
+    "mass_kg",
+    "energy_density_wh_per_l"
+  ],
+  "classification_target": "meets_all_requirements",
+  "test_metrics_regression": {
+    "peak_cell_temp_c": {
+      "MAE": 0.7396724337455793,
+      "RMSE": 1.0544887330980461,
+      "R2": 0.99860500986712,
+      "residual_std": 1.0543596549094187
+    },
+    "charge_time_h": {
+      "MAE": 0.041706141547590156,
+      "RMSE": 0.10540804145135643,
+      "R2": 0.9963467983809725,
+      "residual_std": 0.10504724976426252
+    },
+    "heat_at_charge_w": {
+      "MAE": 2.880433807750535,
+      "RMSE": 4.232758378679811,
+      "R2": 0.9978028524590811,
+      "residual_std": 4.2311921770741705
+    },
+    "effective_charge_rate_c": {
+      "MAE": 0.012311868763552045,
+      "RMSE": 0.022384109532501778,
+      "R2": 0.999177467872414,
+      "residual_std": 0.022340125620911352
+    },
+    "usable_energy_wh": {
+      "MAE": 1.8800128326011976,
+      "RMSE": 2.456964436029103,
+      "R2": 0.9999748040182547,
+      "residual_std": 2.456827580655414
+    },
+    "pack_cost_inr": {
+      "MAE": 77.63385120361113,
+      "RMSE": 100.19364098565599,
+      "R2": 0.9999319707104913,
+      "residual_std": 100.16925185623793
+    },
+    "mass_kg": {
+      "MAE": 0.021431162156339105,
+      "RMSE": 0.028521274400648767,
+      "R2": 0.9999275763557883,
+      "residual_std": 0.02852126448874208
+    },
+    "energy_density_wh_per_l": {
+      "MAE": 0.0001511206689859922,
+      "RMSE": 0.0001628095432170002,
+      "R2": 0.9999999999871251,
+      "residual_std": 0.00016280446678598411
+    }
+  },
+  "test_metrics_classification": {
+    "accuracy": 0.9867272727272727,
+    "precision": 0.7777777777777778,
+    "recall": 0.631578947368421,
+    "f1": 0.6970954356846473
+  },
+  "regressor_comparison": {
+    "peak_cell_temp_c": {
+      "GBR": {
+        "MAE": 1.5951,
+        "RMSE": 2.1871,
+        "R2": 0.9937,
+        "fit_time_s": 0.53
+      },
+      "MLP": {
+        "MAE": 0.7329,
+        "RMSE": 1.0501,
+        "R2": 0.9986,
+        "fit_time_s": 6.15
+      }
+    },
+    "charge_time_h": {
+      "GBR": {
+        "MAE": 0.0703,
+        "RMSE": 0.2226,
+        "R2": 0.9839,
+        "fit_time_s": 0.55
+      },
+      "MLP": {
+        "MAE": 0.0442,
+        "RMSE": 0.1116,
+        "R2": 0.9959,
+        "fit_time_s": 10.21
+      }
+    },
+    "heat_at_charge_w": {
+      "GBR": {
+        "MAE": 4.1348,
+        "RMSE": 6.6061,
+        "R2": 0.9942,
+        "fit_time_s": 0.52
+      },
+      "MLP": {
+        "MAE": 2.8352,
+        "RMSE": 4.2449,
+        "R2": 0.9976,
+        "fit_time_s": 6.8
+      }
+    },
+    "effective_charge_rate_c": {
+      "GBR": {
+        "MAE": 0.032,
+        "RMSE": 0.0584,
+        "R2": 0.9943,
+        "fit_time_s": 0.49
+      },
+      "MLP": {
+        "MAE": 0.0127,
+        "RMSE": 0.0231,
+        "R2": 0.9991,
+        "fit_time_s": 9.08
+      }
+    },
+    "usable_energy_wh": {
+      "GBR": {
+        "MAE": 1.8872,
+        "RMSE": 2.4548,
+        "R2": 1.0,
+        "fit_time_s": 0.6
+      },
+      "MLP": {
+        "MAE": 3.4622,
+        "RMSE": 4.708,
+        "R2": 0.9999,
+        "fit_time_s": 6.39
+      }
+    },
+    "pack_cost_inr": {
+      "GBR": {
+        "MAE": 76.0024,
+        "RMSE": 99.5565,
+        "R2": 0.9999,
+        "fit_time_s": 0.54
+      },
+      "MLP": {
+        "MAE": 1572.3269,
+        "RMSE": 2119.2986,
+        "R2": 0.9696,
+        "fit_time_s": 8.37
+      }
+    },
+    "mass_kg": {
+      "GBR": {
+        "MAE": 0.0216,
+        "RMSE": 0.0285,
+        "R2": 0.9999,
+        "fit_time_s": 0.63
+      },
+      "MLP": {
+        "MAE": 0.0393,
+        "RMSE": 0.05,
+        "R2": 0.9998,
+        "fit_time_s": 3.45
+      }
+    },
+    "energy_density_wh_per_l": {
+      "GBR": {
+        "MAE": 0.0002,
+        "RMSE": 0.0002,
+        "R2": 1.0,
+        "fit_time_s": 0.28
+      },
+      "MLP": {
+        "MAE": 0.2127,
+        "RMSE": 0.3173,
+        "R2": 1.0,
+        "fit_time_s": 3.02
+      }
+    }
+  },
+  "classifier_comparison": {
+    "GBR/GBC": {
+      "accuracy": 0.9833,
+      "f1": 0.54
+    },
+    "MLP": {
+      "accuracy": 0.9884,
+      "f1": 0.7117
+    }
+  }
+}
