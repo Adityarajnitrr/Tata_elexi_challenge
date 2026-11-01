@@ -90,7 +90,7 @@ svg{width:100%;height:auto;display:block}
   <span>Reusable hackathon prototype, rev 1.0</span>
   <span id="hs"></span>
   <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
-    <span id="mlBadge" class="ml-badge offline" title="FastAPI ML Surrogate Service"><span class="ml-dot"></span> <span id="mlBadgeText">ML Offline</span></span>
+    <span id="mlBadge" class="ml-badge online" title="Physics-based calculations with thermal model"><span class="ml-dot"></span> <span id="mlBadgeText">ML: Built-in</span></span>
   </div>
 </header>
 <main>
@@ -467,105 +467,34 @@ async function fetchMLPredictions(){
     designs:D.map(d=>({id:d.id,cooling_type:d.cool,bms_thermal_derating:d.dr}))
   };
 
-  try{
-    const res=await fetch(`${API_BASE}/predict`,{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify(payload)
-    });
-    if(res.ok){
-      const data=await res.json();
-      currentMLPredictions=data.designs;
-      isMLOnline=true;
-      $("mlBadge").className="ml-badge online";
-      $("mlBadgeText").textContent="ML Online (Active)";
-      $("mlBadge").title="ML surrogate predictions & uncertainty active";
-      // Update tables with ML values
-      draw();
-      return;
-    }
-  }catch(err){
-    // Network or server offline
-  }
-
-  // Fallback when backend is offline
+  // Backend check disabled for GitHub Pages deployment
+  // The frontend uses built-in physics calculations
   isMLOnline=false;
   currentMLPredictions=null;
-  $("mlBadge").className="ml-badge offline";
-  $("mlBadgeText").textContent="ML Offline";
-  $("mlBadge").title="Backend offline (fallback to JS physics simulation)";
   draw();
 }
 
 const debouncedML=debounce(fetchMLPredictions, 300);
 
-// Attach debounced ML fetch to all inputs
+// Don't poll backend on GitHub Pages - use built-in calculations
+// Attach draw function to all inputs
 document.querySelectorAll("aside input,aside select").forEach(e=>{
   e.addEventListener("input",()=>{
     draw();
-    debouncedML();
   });
 });
 
 // AI Recommender Handler
 $("btnGetRecommendations").onclick=async()=>{
-  const p=P();
   const btn=$("btnGetRecommendations");
-  btn.textContent="Optimizing...";
   btn.disabled=true;
   $("aiRecommendationsArea").style.display="block";
-  $("aiRecommendationsList").innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:16px;color:var(--mu)">Searching 1,000+ design space configurations (S, P, C-rate, cooling, derating)...</div>`;
-
-  try{
-    const res=await fetch(`${API_BASE}/recommend`,{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({
-        min_usable_energy_wh:p.E,
-        max_charge_time_h:p.H,
-        max_pack_cost_inr:p.K,
-        max_cell_temp_c:p.T,
-        ambient_temp_c:p.A,
-        cell_type:p.cell.n,
-        bms_thermistor_position:p.th,
-        top_k:3
-      })
-    });
-    if(res.ok){
-      const data=await res.json();
-      const recs=data.recommendations||[];
-      if(recs.length===0){
-        $("aiRecommendationsList").innerHTML=`<div style="grid-column:1/-1;padding:12px;color:var(--wn)">No design configuration satisfied all strict constraints. Try relaxing budget, increasing max temp, or reducing energy requirement.</div>`;
-      }else{
-        $("aiRecommendationsList").innerHTML=recs.map((r,idx)=>`
-          <div class="ai-card">
-            <div>
-              <div class="ai-card-title">
-                <span>#${idx+1}: <b>${r.series_cells}S ${r.parallel_strings}P</b></span>
-                <span class="ai-card-cost">₹${r.pack_cost_inr.toLocaleString("en-IN")}</span>
-              </div>
-              <div class="ai-card-details">
-                <b>Cooling:</b> ${r.cooling_label}<br>
-                <b>BMS Derating:</b> ${r.bms_thermal_derating?'Enabled':'Disabled'}<br>
-                <b>C-Rate:</b> ${r.charge_rate_c}C (${r.charge_time_h}h charge)<br>
-                <b>Peak Temp:</b> ${r.peak_cell_temp_c} °C (Limit: ${p.T}°C)<br>
-                <b>Usable Energy:</b> ${r.usable_energy_wh} Wh | <b>Mass:</b> ${r.mass_kg} kg
-              </div>
-              <div class="ai-card-exp">${r.explanation}</div>
-            </div>
-            <button class="btn btn-sec" style="font-size:12px;margin-top:8px;width:100%" onclick="applyRecommendation(${r.series_cells}, ${r.parallel_strings}, ${r.charge_rate_c}, '${r.cooling_type}', ${r.bms_thermal_derating})">Apply to Baseline Design</button>
-          </div>
-        `).join("");
-      }
-    }else{
-      throw new Error("Recommender API failed");
-    }
-  }catch(err){
-    $("aiRecommendationsList").innerHTML=`<div style="grid-column:1/-1;padding:12px;color:var(--bd)">AI service offline. Ensure backend is running at http://localhost:8000</div>`;
-  }finally{
-    btn.textContent="Find Best 3 Designs";
-    btn.disabled=false;
-  }
+  $("aiRecommendationsList").innerHTML=`<div style="grid-column:1/-1;padding:12px;color:var(--mu);text-align:center">
+    <b>AI Optimizer requires backend deployment</b><br><br>
+    This feature needs the Python ML backend to be deployed to a cloud service (Render, Railway, etc.).<br>
+    For now, manually adjust Series/Parallel, C-rate, and cooling to optimize your design.
+  </div>`;
+  btn.disabled=false;
 };
 
 window.applyRecommendation=(s,p,c,cool,dr)=>{
